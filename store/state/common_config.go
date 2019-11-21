@@ -13,6 +13,7 @@ type WriteableCommonConfigStore interface {
 
 type ReadonlyCommonConfigStore interface {
 	GetByIds(ids []string) []entity.CommonConfig
+	GetByName(name string) []entity.CommonConfig
 	GetAll() []entity.CommonConfig
 }
 
@@ -25,6 +26,16 @@ func (cs CommonConfigStore) GetByIds(ids []string) []entity.CommonConfig {
 	configs := make([]entity.CommonConfig, 0, len(ids))
 	for _, config := range cs.configs {
 		if _, found := idsMap[config.Id]; found {
+			configs = append(configs, config)
+		}
+	}
+	return configs
+}
+
+func (cs CommonConfigStore) GetByName(name string) []entity.CommonConfig {
+	configs := make([]entity.CommonConfig, 0)
+	for _, config := range cs.configs {
+		if config.Name == name {
 			configs = append(configs, config)
 		}
 	}

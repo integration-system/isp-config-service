@@ -9,18 +9,15 @@ database:
 
 moduleName: "config"
 grpcOuterAddress:
-  ip: 127.0.0.1
+  #ip: 127.0.0.1
   port: 9002
 
 ws:
   rest:
     port: "9001"
-    ip: "127.0.0.1"
+    ip: "0.0.0.0"
   grpc:
-    port: "9092"
-    ip: "127.0.0.1"
-  raft:
-    port: "9003"
+    port: "9002"
     ip: "0.0.0.0"
 
 metrics:
@@ -35,6 +32,8 @@ metrics:
 cluster:
   dataDir: ./data
   inMemory: true
-  outerAddress: 127.0.0.1:9003
+  outerAddress: 127.0.0.1:9001
+  connectTimeoutSeconds: 5
+  bootstrapCluster: true
   peers:
-    - 127.0.0.1:9003
+    - 127.0.0.1:9001

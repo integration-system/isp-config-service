@@ -3,10 +3,13 @@ package cluster
 import (
 	"errors"
 	"github.com/integration-system/isp-lib/structure"
+	"github.com/integration-system/isp-lib/utils"
 	log "github.com/integration-system/isp-log"
 	jsoniter "github.com/json-iterator/go"
 	"isp-config-service/codes"
+	"isp-config-service/entity"
 	"isp-config-service/raft"
+	"isp-config-service/store/state"
 	"sync"
 	"time"
 )
@@ -71,12 +74,12 @@ func (client *Client) SyncApply(command []byte) (*ApplyLogResponse, error) {
 		if client.leaderClient == nil {
 			return nil, ErrLeaderClientNotInitialized
 		}
-		response, err := client.leaderClient.Send(command, defaultApplyTimeout)
+		response, err := client.leaderClient.Ack(command, defaultApplyTimeout)
 		if err != nil {
 			return nil, err
 		}
 		var logResponse ApplyLogResponse
-		err = json.Unmarshal([]byte(response), &logResponse)
+		err = json.Unmarshal(response, &logResponse)
 		if err != nil {
 			return nil, err
 		}
@@ -102,11 +105,10 @@ func (client *Client) SyncApplyOnLeader(command []byte) (*ApplyLogResponse, erro
 func (client *Client) listenLeader() {
 	for n := range client.r.LeaderCh() {
 		client.leaderMu.Lock()
-		if client.leaderState.leaderAddr != n.CurrentLeaderAddress {
-			if client.leaderClient != nil {
-				client.leaderClient.Close()
-				client.leaderClient = nil
-			}
+		if client.leaderClient != nil {
+			log.Debugf(0, "close previous leader ws connection %s", client.leaderState.leaderAddr)
+			client.leaderClient.Close()
+			client.leaderClient = nil
 		}
 		if n.LeaderElected && !n.IsLeader {
 			leaderClient := NewSocketLeaderClient(n.CurrentLeaderAddress, func() {
@@ -116,30 +118,30 @@ func (client *Client) listenLeader() {
 				log.Fatalf(codes.LeaderClientConnectionError, "could not connect to leader: %v", err)
 				continue
 			}
+			client.leaderClient = leaderClient
+
 			go func(declaration structure.BackendDeclaration) {
 				response, err := leaderClient.SendDeclaration(declaration, defaultApplyTimeout)
 				if err != nil {
-					log.Warnf(codes.SendDeclarationToLeaderError, "send declaration to leader err: %v", err)
-				} else if response != Ok {
-					log.Warnf(codes.SendDeclarationToLeaderError, "send declaration to leader response: %s", response)
+					log.Warnf(codes.SendDeclarationToLeaderError, "send declaration to leader. err: %v", err)
+				} else if response != utils.WsOkResponse {
+					log.Warnf(codes.SendDeclarationToLeaderError, "send declaration to leader. response: %s", response)
 				}
 			}(client.declaration)
-
-			client.leaderClient = leaderClient
 		} else if n.LeaderElected && n.IsLeader {
 			go func(declaration structure.BackendDeclaration) {
-				command := PrepareUpdateBackendDeclarationCommand(declaration)
+				now := state.GenerateDate()
+				module := entity.Module{
+					Id:              state.GenerateId(),
+					Name:            declaration.ModuleName,
+					CreatedAt:       now,
+					LastConnectedAt: now,
+				}
+				command := PrepareModuleConnectedCommand(module)
+				syncApplyCommand(client, command, "ModuleConnectedCommand")
 
-				applyLogResponse, err := client.SyncApply(command)
-				if err != nil {
-					log.Warnf(codes.SyncApplyError, "cluster.SyncApply announce myself: %v", err)
-				}
-				if applyLogResponse != nil && applyLogResponse.ApplyError != "" {
-					log.WithMetadata(map[string]interface{}{
-						"comment":    string(applyLogResponse.Result),
-						"applyError": applyLogResponse.ApplyError,
-					}).Warn(codes.SyncApplyError, "cluster.SyncApply announce myself")
-				}
+				declarationCommand := PrepareUpdateBackendDeclarationCommand(declaration)
+				syncApplyCommand(client, declarationCommand, "UpdateBackendDeclarationCommand")
 			}(client.declaration)
 		}
 		client.leaderState = leaderState{
@@ -168,4 +170,18 @@ func NewRaftClusterClient(r *raft.Raft, declaration structure.BackendDeclaration
 	go client.listenLeader()
 
 	return client
+}
+
+func syncApplyCommand(clusterClient *Client, command []byte, commandName string) {
+	applyLogResponse, err := clusterClient.SyncApply(command)
+	if err != nil {
+		log.Warnf(codes.SyncApplyError, "announce myself. apply %s: %v", commandName, err)
+	}
+	if applyLogResponse != nil && applyLogResponse.ApplyError != "" {
+		log.WithMetadata(map[string]interface{}{
+			"result":      string(applyLogResponse.Result),
+			"applyError":  applyLogResponse.ApplyError,
+			"commandName": commandName,
+		}).Warnf(codes.SyncApplyError, "announce myself. apply command")
+	}
 }

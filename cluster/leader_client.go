@@ -1,9 +1,10 @@
 package cluster
 
 import (
-	"errors"
+	"context"
+	"fmt"
 	"github.com/cenkalti/backoff"
-	gosocketio "github.com/integration-system/golang-socketio"
+	etp "github.com/integration-system/isp-etp-go/client"
 	"github.com/integration-system/isp-lib/config"
 	"github.com/integration-system/isp-lib/structure"
 	"github.com/integration-system/isp-lib/utils"
@@ -11,20 +12,21 @@ import (
 	"isp-config-service/codes"
 	"isp-config-service/conf"
 	"net"
-	"strconv"
+	"net/http"
+	"net/url"
 	"time"
 )
 
 type SocketLeaderClient struct {
-	c *gosocketio.Client
+	client    etp.Client
+	url       string
+	globalCtx context.Context
+	cancel    context.CancelFunc
 }
 
-func (c *SocketLeaderClient) Send(data []byte, timeout time.Duration) (string, error) {
-	response, err := c.c.Ack(ApplyCommandEvent, string(data), timeout)
-	// REMOVE after replacing socket.io
-	if res, err := strconv.Unquote(response); err == nil {
-		response = res
-	}
+func (c *SocketLeaderClient) Ack(data []byte, timeout time.Duration) ([]byte, error) {
+	ctx, _ := context.WithTimeout(c.globalCtx, timeout)
+	response, err := c.client.EmitWithAck(ctx, ApplyCommandEvent, data)
 	return response, err
 }
 
@@ -33,77 +35,73 @@ func (c *SocketLeaderClient) SendDeclaration(backend structure.BackendDeclaratio
 	if err != nil {
 		return "", err
 	}
-	if c.c.IsAlive() {
-		response, err := c.c.Ack(utils.ModuleReady, string(data), timeout)
-		// REMOVE after replacing socket.io
-		if res, err := strconv.Unquote(response); err == nil {
-			response = res
-		}
-		return response, err
-	}
-	return "", errors.New("SendDeclaration connection is not alive")
+	ctx, _ := context.WithTimeout(c.globalCtx, timeout)
+	response, err := c.client.EmitWithAck(ctx, utils.ModuleReady, data)
+	return string(response), err
 }
 
 func (c *SocketLeaderClient) Dial(timeout time.Duration) error {
 	backOff := backoff.NewExponentialBackOff()
 	backOff.MaxElapsedTime = timeout
-	return backoff.Retry(c.c.Dial, backOff)
+	bf := backoff.WithContext(backOff, c.globalCtx)
+	dial := func() error {
+		return c.client.Dial(c.globalCtx, c.url)
+	}
+	return backoff.Retry(dial, bf)
 }
 
 func (c *SocketLeaderClient) Close() {
-	c.c.Close()
+	c.cancel()
+	err := c.client.Close()
+	if err != nil {
+		log.Warnf(codes.LeaderClientConnectionError, "leader client close err: %v", err)
+	}
+	log.Debug(0, "leader client connection closed")
 }
 
 func NewSocketLeaderClient(address string, leaderDisconnectionCallback func()) *SocketLeaderClient {
-	socketIoAddress := getSocketIoUrl(address)
-	client := gosocketio.NewClientBuilder().
-		EnableReconnection().
-		ReconnectionTimeout(1 * time.Second).
-		OnReconnectionError(func(err error) {
-			log.Warnf(codes.LeaderClientConnectionError, "leader client reconnection err: %v", err)
-		}).
-		BuildToConnect(socketIoAddress)
-	err := client.On(gosocketio.OnDisconnection, func(channel *gosocketio.Channel) {
+	etpConfig := etp.Config{
+		HttpClient: http.DefaultClient,
+	}
+	client := etp.NewClient(etpConfig)
+	leaderClient := &SocketLeaderClient{
+		client: client,
+		url:    getUrl(address),
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	leaderClient.globalCtx = ctx
+	leaderClient.cancel = cancel
+
+	leaderClient.client.OnDisconnect(func(err error) {
 		log.WithMetadata(map[string]interface{}{
-			"leaderIp": channel.Ip(),
+			"leaderAddr": address,
 		}).Warn(codes.LeaderClientDisconnected, "leader client disconnected")
 		leaderDisconnectionCallback()
 	})
-	if err != nil {
-		panic(err) // must never occurred, and will removed in future
-	}
 
-	return &SocketLeaderClient{
-		c: client,
-	}
+	leaderClient.client.OnError(func(err error) {
+		log.Warnf(codes.LeaderClientConnectionError, "leader client on error: %v", err)
+	})
+	leaderClient.client.OnConnect(func() {
+		log.Debug(0, "leader client connected")
+	})
+	return leaderClient
 }
 
-func getSocketIoUrl(address string) string {
+func getUrl(address string) string {
 	addr, err := net.ResolveTCPAddr("tcp", address)
 	if err != nil {
 		panic(err) // must never occurred
 	}
-
 	cfg := config.Get().(*conf.Configuration)
-	port, err := strconv.Atoi(cfg.WS.Rest.Port)
-	if err != nil {
-		panic(err)
-	}
-	// TODO логика для определения порта пира, т.к всё тестируется на одной машине
-	//peerNumber := addr.Port - 9000
-	//switch peerNumber {
-	//case 2:
-	//	port = 9011
-	//case 3:
-	//	port = 9021
-	//case 4:
-	//	port = 9031
-	//}
-	//
-	return gosocketio.GetUrl(addr.IP.String(), port, false, map[string]string{
-		ClusterParam:  "true",
-		"module_name": cfg.ModuleName,
-		// TODO вынести ключи в константы в isp-lib и выпилить instance_uuid
-		"instance_uuid": "9d89354b-c728-4b48-b002-a7d3b229f151",
-	})
+
+	// REMOVE
+	addr.Port = addr.Port + 5
+
+	params := url.Values{}
+	params.Add(ClusterParam, "true")
+	// TODO выпилить instance_uuid ?
+	params.Add(utils.ModuleNameGetParamKey, cfg.ModuleName)
+	params.Add(utils.InstanceUuidGetParamKey, "9d89354b-c728-4b48-b002-a7d3b229f151")
+	return fmt.Sprintf("ws://%s:%d/isp-etp/?%s", addr.IP.String(), addr.Port, params.Encode())
 }

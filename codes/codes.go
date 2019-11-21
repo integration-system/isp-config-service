@@ -6,8 +6,8 @@ const (
 	ShutdownHttpServerError = 1002
 	ShutdownHttpServerInfo  = 1003
 
-	SocketIoError     = 1004
-	SocketIoEmitError = 1005
+	WebsocketError     = 1004
+	WebsocketEmitError = 1005
 
 	DatabaseOperationError = 1006
 
@@ -33,4 +33,7 @@ const (
 	DiscoveryServiceSendModulesError  = 1019
 	RoutesServiceSendRoutesError      = 1020
 	ConfigServiceBroadcastConfigError = 1021
+
+	// Cmux
+	InitCmuxError = 1022
 )

@@ -46,7 +46,7 @@ func (s *Store) applyModuleConnectedCommand(data []byte) (interface{}, error) {
 	module := entity.Module{}
 	err := json.Unmarshal(data, &module)
 	if err != nil {
-		return nil, errors.WithMessage(err, "unmarshal cluster.ModuleConnected")
+		return nil, errors.WithMessage(err, "unmarshal entity.Module")
 	}
 	service.ModuleRegistryService.HandleModuleConnectedCommand(module, s.state)
 	return nil, nil
@@ -56,7 +56,7 @@ func (s *Store) applyModuleDisconnectedCommand(data []byte) (interface{}, error)
 	module := entity.Module{}
 	err := json.Unmarshal(data, &module)
 	if err != nil {
-		return nil, errors.WithMessage(err, "unmarshal cluster.ModuleConnected")
+		return nil, errors.WithMessage(err, "unmarshal entity.Module")
 	}
 	service.ModuleRegistryService.HandleModuleDisconnectedCommand(module, s.state)
 	return nil, nil
@@ -76,7 +76,7 @@ func (s *Store) applyActivateConfigCommand(data []byte) (interface{}, error) {
 	activateConfig := cluster.ActivateConfig{}
 	err := json.Unmarshal(data, &activateConfig)
 	if err != nil {
-		return nil, errors.WithMessage(err, "unmarshal cluster.DeleteModules")
+		return nil, errors.WithMessage(err, "unmarshal cluster.ActivateConfig")
 	}
 	response := service.ConfigService.HandleActivateConfigCommand(activateConfig, s.state)
 	return response, nil
@@ -96,7 +96,7 @@ func (s *Store) applyUpsertConfigCommand(data []byte) (interface{}, error) {
 	config := cluster.UpsertConfig{}
 	err := json.Unmarshal(data, &config)
 	if err != nil {
-		return nil, errors.WithMessage(err, "unmarshal entity.Config")
+		return nil, errors.WithMessage(err, "unmarshal cluster.UpsertConfig")
 	}
 	response := service.ConfigService.HandleUpsertConfigCommand(config, s.state)
 	return response, nil
@@ -106,7 +106,7 @@ func (s *Store) applyDeleteCommonConfigsCommand(data []byte) (interface{}, error
 	deleteConfigs := cluster.DeleteCommonConfig{}
 	err := json.Unmarshal(data, &deleteConfigs)
 	if err != nil {
-		return nil, errors.WithMessage(err, "unmarshal cluster.DeleteConfigs")
+		return nil, errors.WithMessage(err, "unmarshal cluster.DeleteCommonConfig")
 	}
 	response := service.CommonConfigService.HandleDeleteConfigsCommand(deleteConfigs, s.state)
 	return response, nil
@@ -116,7 +116,7 @@ func (s *Store) applyUpsertCommonConfigCommand(data []byte) (interface{}, error)
 	config := cluster.UpsertCommonConfig{}
 	err := json.Unmarshal(data, &config)
 	if err != nil {
-		return nil, errors.WithMessage(err, "unmarshal entity.CommonConfig")
+		return nil, errors.WithMessage(err, "unmarshal cluster.UpsertCommonConfig")
 	}
 	response := service.CommonConfigService.HandleUpsertConfigCommand(config, s.state)
 	return response, nil

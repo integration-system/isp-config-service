@@ -1,13 +1,13 @@
 package holder
 
 import (
+	etp "github.com/integration-system/isp-etp-go"
 	"isp-config-service/cluster"
-	"isp-config-service/ws"
 	"net/http"
 )
 
 var (
 	ClusterClient *cluster.Client
-	Socket        *ws.WebsocketServer
+	EtpServer     etp.Server
 	HttpServer    *http.Server
 )

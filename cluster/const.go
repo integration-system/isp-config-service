@@ -15,7 +15,6 @@ const (
 
 	TokenParam   = "token"
 	ClusterParam = "cluster"
-	Ok           = "ok"
 )
 const (
 	_ = iota

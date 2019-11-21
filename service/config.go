@@ -38,17 +38,17 @@ func (e validationSchemaError) Error() string {
 	return resp
 }
 
-func (s configService) GetCompiledConfig(moduleName string, state state.ReadonlyState) (map[string]interface{}, error) {
+func (cs configService) GetCompiledConfig(moduleName string, state state.ReadonlyState) (map[string]interface{}, error) {
 	module := state.Modules().GetByName(moduleName)
 	if module == nil {
 		return nil, errors.Errorf("module with name %s not found", moduleName)
 	}
 	config := state.Configs().GetActiveByModuleId(module.Id)
 	if config == nil {
-		return nil, errors.Errorf("no active configs for moduleId %s", module.Id)
+		return nil, errors.Errorf("no active configs for moduleName %s, moduleId %s", moduleName, module.Id)
 	}
 
-	return s.CompileConfig(config.Data, state, config.CommonConfigs...), nil
+	return cs.CompileConfig(config.Data, state, config.CommonConfigs...), nil
 }
 
 func (configService) CompileConfig(data map[string]interface{}, state state.ReadonlyState, commonConfigsIds ...string) map[string]interface{} {
@@ -165,20 +165,20 @@ func (cs configService) BroadcastNewConfig(state state.ReadonlyState, configs ..
 
 		compiledConfig, err := cs.GetCompiledConfig(moduleName, state)
 		if err != nil {
-			go cs.broadcast(room, utils.ConfigError, err.Error())
+			go cs.broadcast(room, utils.ConfigError, []byte(err.Error()))
 			continue
 		}
 		data, err := json.Marshal(compiledConfig)
 		if err != nil {
-			go cs.broadcast(room, utils.ConfigError, err.Error())
+			go cs.broadcast(room, utils.ConfigError, []byte(err.Error()))
 			continue
 		}
-		go cs.broadcast(room, utils.ConfigSendConfigWhenConnected, string(data))
+		go cs.broadcast(room, utils.ConfigSendConfigWhenConnected, data)
 	}
 }
 
-func (cs configService) broadcast(room, event, data string) {
-	err := holder.Socket.Broadcast(room, utils.ConfigSendConfigWhenConnected, data)
+func (cs configService) broadcast(room, event string, data []byte) {
+	err := holder.EtpServer.BroadcastToRoom(room, utils.ConfigSendConfigWhenConnected, data)
 	if err != nil {
 		log.Errorf(codes.ConfigServiceBroadcastConfigError, "broadcast %s err: %v", event, err)
 	}

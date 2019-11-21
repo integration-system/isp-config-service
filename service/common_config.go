@@ -38,13 +38,20 @@ func (s commonConfigService) HandleDeleteConfigsCommand(deleteCommonConfig clust
 
 func (s commonConfigService) HandleUpsertConfigCommand(upsertConfig cluster.UpsertCommonConfig, state state.WritableState) cluster.ResponseWithError {
 	config := upsertConfig.Config
+	configsByName := state.CommonConfigs().GetByName(config.Name)
 	if upsertConfig.Create {
+		if len(configsByName) > 0 {
+			return cluster.NewResponseErrorf(codes2.AlreadyExists, "common config with name %s already exists", upsertConfig.Config.Name)
+		}
 		config = state.WritableCommonConfigs().Create(config)
 	} else {
 		// Update
 		configs := state.CommonConfigs().GetByIds([]string{config.Id})
 		if len(configs) == 0 {
 			return cluster.NewResponseErrorf(codes2.NotFound, "common config with id %s not found", config.Id)
+		}
+		if len(configsByName) > 0 && configs[0].Id != configsByName[0].Id {
+			return cluster.NewResponseErrorf(codes2.AlreadyExists, "common config with name %s already exists", upsertConfig.Config.Name)
 		}
 		config.CreatedAt = configs[0].CreatedAt
 		state.WritableCommonConfigs().UpdateById(config)

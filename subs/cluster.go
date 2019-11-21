@@ -1,14 +1,14 @@
 package subs
 
 import (
+	etp "github.com/integration-system/isp-etp-go"
 	log "github.com/integration-system/isp-log"
 	"isp-config-service/cluster"
 	"isp-config-service/codes"
 	"isp-config-service/holder"
-	"isp-config-service/ws"
 )
 
-func (h *socketEventHandler) applyCommandOnLeader(conn ws.Conn, cmd []byte) string {
+func (h *socketEventHandler) applyCommandOnLeader(conn etp.Conn, cmd []byte) []byte {
 	obj, err := holder.ClusterClient.SyncApplyOnLeader(cmd)
 	if err != nil {
 		var logResponse cluster.ApplyLogResponse
@@ -17,11 +17,11 @@ func (h *socketEventHandler) applyCommandOnLeader(conn ws.Conn, cmd []byte) stri
 		if err != nil {
 			log.Fatalf(codes.SyncApplyError, "marshaling ApplyLogResponse: %v", err)
 		}
-		return string(data)
+		return data
 	}
 	data, err := json.Marshal(obj)
 	if err != nil {
 		log.Fatalf(codes.SyncApplyError, "marshaling ApplyLogResponse: %v", err)
 	}
-	return string(data)
+	return data
 }

@@ -32,23 +32,23 @@ func (l *LoggerAdapter) Log(level logrus.Level, msg string, args ...interface{})
 }
 
 func (l *LoggerAdapter) Trace(msg string, args ...interface{}) {
-	l.Log(logrus.TraceLevel, msg, args)
+	l.Log(logrus.TraceLevel, msg, args...)
 }
 
 func (l *LoggerAdapter) Debug(msg string, args ...interface{}) {
-	l.Log(logrus.DebugLevel, msg, args)
+	l.Log(logrus.DebugLevel, msg, args...)
 }
 
 func (l *LoggerAdapter) Info(msg string, args ...interface{}) {
-	l.Log(logrus.InfoLevel, msg, args)
+	l.Log(logrus.InfoLevel, msg, args...)
 }
 
 func (l *LoggerAdapter) Warn(msg string, args ...interface{}) {
-	l.Log(logrus.WarnLevel, msg, args)
+	l.Log(logrus.WarnLevel, msg, args...)
 }
 
 func (l *LoggerAdapter) Error(msg string, args ...interface{}) {
-	l.Log(logrus.ErrorLevel, msg, args)
+	l.Log(logrus.ErrorLevel, msg, args...)
 }
 
 func (l *LoggerAdapter) IsTrace() bool {
