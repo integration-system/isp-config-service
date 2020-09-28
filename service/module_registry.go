@@ -104,12 +104,12 @@ func (moduleRegistryService) HandleDeleteModulesCommand(deleteModules cluster.De
 	return len(deletedModules)
 }
 
-func (moduleRegistryService) ValidConfig(cmi entity.Config, state state.ReadonlyState) bool {
-	schemas := state.Schemas().GetByModuleIds([]string{cmi.ModuleId})
+func (moduleRegistryService) ValidateConfig(config entity.Config, state state.ReadonlyState) bool {
+	schemas := state.Schemas().GetByModuleIds([]string{config.ModuleId})
 	valid := false
 
 	for _, s := range schemas {
-		dataForValidate := ConfigService.CompileConfig(cmi.Data, state, cmi.CommonConfigs...)
+		dataForValidate := ConfigService.CompileConfig(config.Data, state, config.CommonConfigs...)
 		valid, _ = ConfigService.validateSchema(s, dataForValidate)
 	}
 

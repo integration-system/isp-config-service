@@ -73,7 +73,7 @@ func (c *config) GetConfigsByModuleId(request domain.GetByModuleIdRequest) ([]do
 		for _, value := range config {
 			configInfo = append(configInfo, domain.ConfigModuleInfo{
 				Config: value,
-				Valid:  service.ModuleRegistry.ValidConfig(value, state),
+				Valid:  service.ModuleRegistry.ValidateConfig(value, state),
 			})
 		}
 	})
