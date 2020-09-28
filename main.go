@@ -51,7 +51,7 @@ func init() {
 }
 
 // @title ISP configuration service
-// @version 2.4.0
+// @version 2.4.1
 // @description Сервис управления конфигурацией модулей ISP кластера
 
 // @license.name GNU GPL v3.0

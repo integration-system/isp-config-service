@@ -9,6 +9,7 @@ import (
 	"isp-config-service/cluster"
 	"isp-config-service/domain"
 	"isp-config-service/entity"
+	"isp-config-service/service"
 	"isp-config-service/store"
 	"isp-config-service/store/state"
 )
@@ -55,22 +56,37 @@ func (c *config) GetActiveConfigByModuleName(request domain.GetByModuleNameReque
 // @Accept json
 // @Produce json
 // @Param body body domain.GetByModuleIdRequest true "ID модуля"
-// @Success 200 {array}  entity.Config
+// @Success 200 {array}  domain.ConfigModuleInfo
 // @Failure 400 {object} structure.GrpcError "если идентификатор не указан"
 // @Failure 404 {object} structure.GrpcError "если конфигурация не найдена"
 // @Failure 500 {object} structure.GrpcError
 // @Router /config/get_configs_by_module_id [POST]
-func (c *config) GetConfigsByModuleId(request domain.GetByModuleIdRequest) ([]entity.Config, error) {
+func (c *config) GetConfigsByModuleId(request domain.GetByModuleIdRequest) ([]domain.ConfigModuleInfo, error) {
 	var config []entity.Config
+	var configInfo []domain.ConfigModuleInfo
 
 	c.rstore.VisitReadonlyState(func(state state.ReadonlyState) {
 		config = state.Configs().GetByModuleIds([]string{request.ModuleId})
+		if config == nil {
+			return
+		}
+		for _, value := range config {
+			configInfo = append(configInfo, domain.ConfigModuleInfo{
+				Config: value,
+				Valid:  false,
+			})
+		}
+
+		for i := range configInfo {
+			service.ValidConfig(request.ModuleId, &configInfo[i], state)
+		}
 	})
 
-	if config == nil {
+	if configInfo == nil {
 		return nil, status.Errorf(codes.NotFound, "configs for module '%s' not found", request.ModuleId)
 	}
-	return config, nil
+
+	return configInfo, nil
 }
 
 // @Summary Метод обновления конфигурации

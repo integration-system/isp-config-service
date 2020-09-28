@@ -104,6 +104,15 @@ func (moduleRegistryService) HandleDeleteModulesCommand(deleteModules cluster.De
 	return len(deletedModules)
 }
 
+func ValidConfig(id string, cmi *domain.ConfigModuleInfo, state state.ReadonlyState) {
+	schemas := state.Schemas().GetByModuleIds([]string{id})
+
+	for _, s := range schemas {
+		dataForValidate := ConfigService.CompileConfig(cmi.Data, state, cmi.CommonConfigs...)
+		cmi.Valid, _ = ConfigService.validateSchema(s, dataForValidate)
+	}
+}
+
 //nolint:funlen
 func (moduleRegistryService) GetAggregatedModuleInfo(state state.ReadonlyState) []domain.ModuleInfo {
 	modules := state.Modules().GetAll()

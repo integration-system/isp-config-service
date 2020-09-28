@@ -17,7 +17,7 @@ type Handlers struct {
 
 	// ===== CONFIG =====
 	GetActiveConfigByModuleName func(request domain.GetByModuleNameRequest) (*entity.Config, error)             `method:"get_active_config_by_module_name" group:"config" inner:"true"`
-	GetConfigsByModuleId        func(request domain.GetByModuleIdRequest) ([]entity.Config, error)              `method:"get_configs_by_module_id" group:"config" inner:"true"`
+	GetConfigsByModuleId        func(request domain.GetByModuleIdRequest) ([]domain.ConfigModuleInfo, error)    `method:"get_configs_by_module_id" group:"config" inner:"true"`
 	CreateUpdateConfig          func(config domain.CreateUpdateConfigRequest) (*domain.ConfigModuleInfo, error) `method:"create_update_config" group:"config" inner:"true"`
 	MarkConfigAsActive          func(identity domain.ConfigIdRequest) (*entity.Config, error)                   `method:"mark_config_as_active" group:"config" inner:"true"`
 	DeleteConfig                func(identities []string) (*domain.DeleteResponse, error)                       `method:"delete_config" group:"config" inner:"true"`

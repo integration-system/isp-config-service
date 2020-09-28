@@ -605,7 +605,7 @@ info:
   license:
     name: GNU GPL v3.0
   title: ISP configuration service
-  version: 2.3.2
+  version: 2.4.1
 paths:
   /common_config/compile:
     post:
@@ -931,7 +931,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/entity.Config'
+              $ref: '#/definitions/domain.ConfigModuleInfo'
             type: array
         "400":
           description: если идентификатор не указан
