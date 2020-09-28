@@ -67,22 +67,18 @@ func (c *config) GetConfigsByModuleId(request domain.GetByModuleIdRequest) ([]do
 
 	c.rstore.VisitReadonlyState(func(state state.ReadonlyState) {
 		config = state.Configs().GetByModuleIds([]string{request.ModuleId})
-		if config == nil {
+		if len(config) == 0 {
 			return
 		}
 		for _, value := range config {
 			configInfo = append(configInfo, domain.ConfigModuleInfo{
 				Config: value,
-				Valid:  false,
+				Valid:  service.ModuleRegistry.ValidConfig(value, state),
 			})
-		}
-
-		for i := range configInfo {
-			service.ValidConfig(request.ModuleId, &configInfo[i], state)
 		}
 	})
 
-	if configInfo == nil {
+	if len(configInfo) == 0 {
 		return nil, status.Errorf(codes.NotFound, "configs for module '%s' not found", request.ModuleId)
 	}
 
