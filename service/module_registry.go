@@ -181,6 +181,29 @@ func (moduleRegistryService) GetAggregatedModuleInfo(state state.ReadonlyState) 
 			})
 			con.EstablishedAt = info.LastConnectedAt
 			conns = append(conns, con)
+			var discr []domain.ProtocolPathsDiscription
+			if back.HandlersInfo == nil {
+				if back.Endpoints != nil && len(back.Endpoints) > 0 {
+					discr = []domain.ProtocolPathsDiscription{{
+						Protocol:      "grpc",
+						HandlersPaths: getPathsFromEndpoints(back.Endpoints),
+						Address:       back.Address,
+					}}
+				}
+			} else {
+				for protocol, info := range back.HandlersInfo {
+					el := domain.ProtocolPathsDiscription{
+						Protocol:      protocol,
+						HandlersPaths: getPathsFromEndpoints(info.Endpoints),
+						Address: structure.AddressConfiguration{
+							Port: info.Port,
+							IP:   back.Address.IP,
+						},
+					}
+					discr = append(discr, el)
+				}
+			}
+			info.ProtocolPathsDiscriptions = discr
 		}
 		sort.Slice(info.Configs, func(i, j int) bool {
 			return info.Configs[i].Version < info.Configs[j].Version
@@ -196,4 +219,13 @@ func (moduleRegistryService) GetAggregatedModuleInfo(state state.ReadonlyState) 
 		return result[i].Name < result[j].Name
 	})
 	return result
+}
+
+func getPathsFromEndpoints(endpoints []structure.EndpointDescriptor) []string {
+	paths := make([]string, len(endpoints))
+	for i := range endpoints {
+		endpoint := endpoints[i]
+		paths[i] = endpoint.Path
+	}
+	return paths
 }

@@ -13,16 +13,23 @@ type DeleteResponse struct {
 }
 
 type ModuleInfo struct {
-	Id                 string
-	Name               string
-	Active             bool
-	CreatedAt          time.Time
-	LastConnectedAt    time.Time
-	LastDisconnectedAt time.Time
-	Configs            []ConfigModuleInfo
-	ConfigSchema       *schema.Schema
-	Status             []Connection
-	RequiredModules    []ModuleDependency
+	Id                        string
+	Name                      string
+	Active                    bool
+	CreatedAt                 time.Time
+	LastConnectedAt           time.Time
+	LastDisconnectedAt        time.Time
+	Configs                   []ConfigModuleInfo
+	ConfigSchema              *schema.Schema
+	Status                    []Connection
+	RequiredModules           []ModuleDependency
+	ProtocolPathsDiscriptions []ProtocolPathsDiscription
+}
+
+type ProtocolPathsDiscription struct {
+	Protocol      string
+	Address       structure.AddressConfiguration
+	HandlersPaths []string
 }
 
 type Connection struct {
